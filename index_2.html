@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>지사 교재 수요 조사</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #17233d;
+    --muted: #6a7385;
+    --line: #e3e7ef;
+    --paper: #eef1f6;
+    --surface: #ffffff;
+    --primary: #1f3a68;
+    --accent: #2563c9;
+    --accent-soft: #eaf1fd;
+    --ok: #1f7a52;
+    --ok-soft: #e7f5ee;
+    --warn-soft: #fef3e2;
+    --warn: #a9670e;
+    --danger: #c22f3e;
+    --danger-soft: #fdecee;
+    --shadow: 0 1px 2px rgba(20,35,70,.06), 0 8px 24px rgba(20,35,70,.06);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 22px 18px 80px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  .btn { font: inherit; font-weight: 700; font-size: 15px; border-radius: 11px; cursor: pointer; border: 1.5px solid transparent; padding: 13px 20px; }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #1f57b8; }
+  .btn.primary:disabled { background: #b7c4dc; cursor: not-allowed; }
+  .btn.ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.sm { padding: 9px 14px; font-size: 13.5px; border-radius: 9px; }
+  input, select { font: inherit; }
+
+  /* ===== gate ===== */
+  #view-gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .gate-card { width: 100%; max-width: 420px; padding: 34px 30px 30px; }
+  .gate-card h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--primary); text-align: center; }
+  .gate-card .sub { margin: 0 0 26px; text-align: center; color: var(--muted); font-size: 13.5px; }
+  .gate-tabs { display: flex; background: #f0f3f8; border-radius: 10px; padding: 4px; margin-bottom: 22px; }
+  .gate-tabs button { flex: 1; border: 0; background: transparent; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); padding: 10px; border-radius: 8px; cursor: pointer; }
+  .gate-tabs button.on { background: #fff; color: var(--primary); box-shadow: 0 1px 3px rgba(20,35,70,.12); }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 7px; }
+  .field input { width: 100%; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 10px; font-size: 15px; }
+  .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .field .help { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .gate-err { display: none; background: var(--danger-soft); color: var(--danger); font-size: 13px; font-weight: 600; padding: 10px 13px; border-radius: 9px; margin-bottom: 14px; }
+  .gate-err.show { display: block; }
+  .gate-card .btn { width: 100%; }
+
+  /* ===== app header ===== */
+  header.top { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .brand h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--primary); }
+  .who { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--muted); }
+  .who b { color: var(--ink); }
+  .chip { background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 999px; }
+  .chip.admin { background: #f3e8fd; color: #7239c9; }
+
+  .banner { display: none; background: var(--warn-soft); color: var(--warn); border: 1px solid #f3ddb5; border-radius: 12px; padding: 12px 16px; font-size: 13px; line-height: 1.55; margin-bottom: 16px; }
+  .banner.show { display: block; }
+
+  section.view { display: none; }
+  section.view.active { display: block; }
+
+  /* ===== branch entry ===== */
+  .status-strip { padding: 16px 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 999px; font-weight: 700; font-size: 12.5px; }
+  .pill.done { background: var(--ok-soft); color: var(--ok); }
+  .pill.todo { background: var(--warn-soft); color: var(--warn); }
+  .status-strip .when { color: var(--muted); font-size: 13px; }
+
+  .entry { padding: 6px 18px 18px; }
+  .book { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; padding: 15px 4px; border-bottom: 1px solid var(--line); }
+  .book:last-of-type { border-bottom: 0; }
+  .book .name { font-weight: 600; font-size: 15px; line-height: 1.35; }
+  .book .bar { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; margin-top: 3px; }
+  .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .stepper button { border: 0; background: #f4f6fa; width: 40px; height: 44px; font-size: 20px; cursor: pointer; color: var(--primary); }
+  .stepper button:active { background: #e7ecf5; }
+  .stepper input { width: 74px; height: 44px; border: 0; text-align: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .stepper input:focus { outline: none; background: var(--accent-soft); }
+  .totalbar { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 2px 4px; padding-top: 14px; border-top: 2px solid var(--ink); }
+  .totalbar .lab { font-weight: 700; font-size: 14px; }
+  .totalbar .val { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--primary); }
+  .totalbar .val small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 3px; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .actions .btn.primary { flex: 1; }
+
+  /* ===== admin ===== */
+  .sum-head { padding: 18px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+  .progress { flex: 1; min-width: 240px; }
+  .progress .nums { font-size: 14px; margin-bottom: 6px; }
+  .progress .nums b { font-size: 20px; color: var(--primary); font-variant-numeric: tabular-nums; }
+  .track { height: 9px; background: #e4e9f1; border-radius: 999px; overflow: hidden; }
+  .track > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s; }
+  .totals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 0 18px 18px; }
+  .tcard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fbfcfe; }
+  .tcard .t-name { font-size: 12.5px; color: var(--muted); line-height: 1.3; min-height: 32px; }
+  .tcard .t-val { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 4px; color: var(--primary); }
+  .table-tools { display: flex; gap: 10px; flex-wrap: wrap; padding: 0 18px 14px; align-items: center; }
+  .table-tools input { flex: 1; min-width: 180px; font-size: 14px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; }
+  .table-tools input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .table-tools select { font-size: 14px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; }
+  .table-scroll { overflow-x: auto; border-top: 1px solid var(--line); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { padding: 10px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th.l, td.l { text-align: left; }
+  thead th { position: sticky; top: 0; background: #f5f7fb; font-weight: 700; color: var(--primary); z-index: 2; }
+  tbody td { font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: #f7f9fc; }
+  tr.notsub td { color: #9aa2b1; }
+  tfoot td { font-weight: 800; background: #f5f7fb; border-top: 2px solid var(--ink); }
+  .s-badge { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+  .s-badge.done { background: var(--ok-soft); color: var(--ok); }
+  .s-badge.todo { background: var(--warn-soft); color: var(--warn); }
+  .note { font-size: 12.5px; color: var(--muted); padding: 14px 18px 16px; line-height: 1.55; }
+
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px); background: var(--ink); color: #fff; padding: 13px 20px; border-radius: 12px; font-weight: 600; box-shadow: var(--shadow); opacity: 0; transition: .25s; z-index: 100; font-size: 14px; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 560px) {
+    .book { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== 게이트(로그인) ========== -->
+<section id="view-gate" class="view active">
+  <div class="card gate-card">
+    <h1>지사 교재 수요 조사</h1>
+    <p class="sub">거래처코드로 로그인해 필요 수량을 제출해 주세요.</p>
+
+    <div class="gate-tabs">
+      <button id="gt-branch" class="on" onclick="gateTab('branch')">지사 로그인</button>
+      <button id="gt-admin" onclick="gateTab('admin')">관리자</button>
+    </div>
+
+    <div class="gate-err" id="gateErr"></div>
+
+    <div id="gate-branch">
+      <div class="field">
+        <label for="loginCode">거래처코드 (아이디)</label>
+        <input id="loginCode" type="text" autocomplete="off" placeholder="예: C001119" maxlength="10" />
+        <div class="help">배정받으신 거래처코드를 입력하세요. 본인 지사의 수량만 입력·확인할 수 있습니다.</div>
+      </div>
+      <button class="btn primary" onclick="loginBranch()">입장하기</button>
+    </div>
+
+    <div id="gate-admin" style="display:none;">
+      <div class="field">
+        <label for="adminPw">관리자 비밀번호</label>
+        <input id="adminPw" type="password" autocomplete="off" placeholder="비밀번호 입력" />
+      </div>
+      <button class="btn primary" onclick="loginAdmin()">관리자 모드 입장</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 지사 입력 화면 ========== -->
+<section id="view-branch" class="view">
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><h1>교재 수요 입력</h1></div>
+      <div class="who">
+        <span class="chip">지사</span>
+        <span><b id="meName"></b> (<span id="meCode"></span>)</span>
+        <button class="btn ghost sm" onclick="logout()">로그아웃</button>
+      </div>
+    </header>
+
+    <div class="banner" id="branchBanner"></div>
+
+    <div class="card status-strip" id="branchStatus"></div>
+
+    <div class="card">
+      <div class="entry" id="entryArea"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 관리자 화면 ========== -->
+<section id="view-admin" class="view">
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><h1>수요 조사 집계 (관리자)</h1></div>
+      <div class="who">
+        <span class="chip admin">관리자</span>
+        <button class="btn ghost sm" onclick="loadAdmin()">새로고침</button>
+        <button class="btn ghost sm" onclick="logout()">로그아웃</button>
+      </div>
+    </header>
+
+    <div class="banner" id="adminBanner"></div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="sum-head">
+        <div class="progress">
+          <div class="nums"><b id="subCount">0</b> / <span id="totalCount">0</span> 지사 제출 완료</div>
+          <div class="track"><i id="subBar" style="width:0%"></i></div>
+        </div>
+        <button class="btn primary" onclick="exportXlsx()">엑셀(.xlsx) 내려받기</button>
+      </div>
+      <div class="totals-grid" id="totalsGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="table-tools">
+        <input id="sumSearch" type="text" placeholder="지사 검색 (이름/코드)" oninput="renderTable()" />
+        <select id="sumFilter" onchange="renderTable()">
+          <option value="all">전체 보기</option>
+          <option value="done">제출 완료만</option>
+          <option value="todo">미제출만</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead id="sumHead"></thead>
+          <tbody id="sumBody"></tbody>
+          <tfoot id="sumFoot"></tfoot>
+        </table>
+      </div>
+      <p class="note">지사가 새로 제출하면 해당 지사의 값이 갱신됩니다. 최신 현황은 우측 상단 "새로고침"으로 확인하세요.</p>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================
+   설정
+   ===================================================== */
+// 구글 앱스 스크립트 배포 URL을 여기에 붙여넣으세요. (설정 안내문 참고)
+// 예: const API_URL = "https://script.google.com/macros/s/AKfycb....../exec";
+const API_URL = "";
+
+const ADMIN_PW = "neungyule12!";
+
+const TEXTBOOKS = [
+  { name: "그래머 인사이드(스타터)(21)", barcode: "9791125337065" },
+  { name: "그래머 인사이드(1)(21)", barcode: "9791125337072" },
+  { name: "그래머 인사이드(2)(21)", barcode: "9791125337089" },
+  { name: "그래머 인사이드(3)(21)", barcode: "9791125337096" },
+  { name: "얇고빠른10+2회(수능독해 기본)", barcode: "9791125329114" },
+  { name: "수능만만 기본문법어법어휘 150제", barcode: "9791125337355" }
+];
+const BRANCHES = [
+  {code:"C001119",name:"갑 진 사"},{code:"C001107",name:"푸른언덕"},{code:"C001128",name:"지혜의샘"},{code:"C001584",name:"서남도서"},{code:"C001101",name:"강 우 사"},{code:"C001586",name:"청인에듀"},{code:"C001145",name:"서부서적"},{code:"C001106",name:"주영도서"},{code:"C001117",name:"홍지교육"},{code:"C004712",name:"고앤고에듀"},{code:"C001571",name:"다훈교육"},{code:"C001585",name:"태경도서"},{code:"C004313",name:"상문도서"},{code:"C004350",name:"동아교육"},{code:"C005096",name:"가람교육"},{code:"C004343",name:"네모의꿈"},{code:"C004323",name:"하나서적"},{code:"C004314",name:"일지서적"},{code:"C004315",name:"한솔문고"},{code:"C001109",name:"이룸교육"},{code:"C004305",name:"라온도서"},{code:"C004338",name:"학습사"},{code:"C004330",name:"서한도서"},{code:"C004340",name:"한강도서"},{code:"C004230",name:"한다북스"},{code:"C004344",name:"선진교육"},{code:"C004342",name:"도서총판 정남"},{code:"C004303",name:"자유문고"},{code:"C004332",name:"교육미디어"},{code:"C004531",name:"대명서적"},{code:"C004113",name:"천재서적"},{code:"C004114",name:"미래교육"},{code:"C004115",name:"좋은교육"},{code:"C004104",name:"동아서점"},{code:"C004235",name:"하늘엘엔디"},{code:"C004228",name:"능률도서"},{code:"C005088",name:"하늘비앤디"},{code:"C004218",name:"서울서점"},{code:"C004208",name:"한내책방"},{code:"C004213",name:"삼지사"},{code:"C004215",name:"중앙서점"},{code:"C004217",name:"봉황서점"},{code:"C005093",name:"내포중앙서점"},{code:"C004234",name:"청주서적"},{code:"C004211",name:"한샘서점"},{code:"C004223",name:"형제서점"},{code:"C004232",name:"중앙서점"},{code:"C004438",name:"동아사"},{code:"C004432",name:"군산서점"},{code:"C004442",name:"좋은교육"},{code:"C004445",name:"교육서적"},{code:"C004434",name:"신성지서림"},{code:"C004424",name:"제일서점"},{code:"C004436",name:"중앙서점"},{code:"C004428",name:"천일서적"},{code:"C004433",name:"푸른도서"},{code:"C004427",name:"문화서점"},{code:"C004431",name:"마로서적"},{code:"C004423",name:"일광서점"},{code:"C004506",name:"한국도서"},{code:"C004601",name:"현대서적"},{code:"C004533",name:"경산서적"},{code:"C004530",name:"(주)독도서적"},{code:"C004625",name:"세종서점"},{code:"C004604",name:"꽃동산서점"},{code:"C004608",name:"종로교재사"},{code:"C004607",name:"대한서점"},{code:"C004611",name:"경북서림"},{code:"C004526",name:"명문서적"},{code:"C005087",name:"왜관세종서적"},{code:"C004532",name:"영천서적"},{code:"C004612",name:"한양도서"},{code:"C004511",name:"남도서적"},{code:"C004528",name:"이룸도서"},{code:"C004630",name:"한사랑서적"},{code:"C004614",name:"제일서점"},{code:"C004508",name:"덕유문고"},{code:"C004527",name:"강남서점"},{code:"C004724",name:"(주)동명서점"},{code:"C004516",name:"대한서점"},{code:"C004624",name:"영주교육"}
+];
+
+/* =====================================================
+   저장소 계층: 앱스스크립트(API_URL) > 클로드 아티팩트 > 브라우저(localStorage)
+   ===================================================== */
+const MODE = API_URL ? "api" : (typeof window.storage !== "undefined" ? "artifact" : "local");
+
+async function storeGet(code) {
+  if (MODE === "api") {
+    const r = await fetch(API_URL + "?action=get&code=" + encodeURIComponent(code));
+    const j = await r.json();
+    return j && j.code ? j : null;
+  }
+  if (MODE === "artifact") {
+    try { const r = await window.storage.get("sub:" + code, true); return r ? JSON.parse(r.value) : null; }
+    catch (e) { return null; }
+  }
+  const v = localStorage.getItem("sub:" + code);
+  return v ? JSON.parse(v) : null;
+}
+async function storeSave(sub) {
+  if (MODE === "api") {
+    const r = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(sub) });
+    const j = await r.json();
+    if (!j || !j.ok) throw new Error("save failed");
+    return;
+  }
+  if (MODE === "artifact") {
+    const r = await window.storage.set("sub:" + sub.code, JSON.stringify(sub), true);
+    if (!r) throw new Error("save failed");
+    return;
+  }
+  localStorage.setItem("sub:" + sub.code, JSON.stringify(sub));
+}
+async function storeAll() {
+  const map = {};
+  if (MODE === "api") {
+    const r = await fetch(API_URL + "?action=all");
+    const arr = await r.json();
+    (arr || []).forEach(s => { if (s && s.code) map[s.code] = s; });
+    return map;
+  }
+  if (MODE === "artifact") {
+    let keys = [];
+    try { const r = await window.storage.list("sub:", true); keys = (r && r.keys) ? r.keys : []; } catch (e) {}
+    for (let i = 0; i < keys.length; i += 8) {
+      const res = await Promise.all(keys.slice(i, i + 8).map(async k => {
+        try { const g = await window.storage.get(k, true); return g ? JSON.parse(g.value) : null; } catch (e) { return null; }
+      }));
+      res.forEach(s => { if (s && s.code) map[s.code] = s; });
+    }
+    return map;
+  }
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("sub:")) { try { const s = JSON.parse(localStorage.getItem(k)); if (s && s.code) map[s.code] = s; } catch (e) {} }
+  }
+  return map;
+}
+function storageWarning() {
+  if (MODE !== "local") return "";
+  return "⚠️ 아직 데이터 서버(구글 시트 연동)가 설정되지 않아, 입력한 값이 <b>이 컴퓨터 브라우저에만</b> 저장됩니다. 여러 지사의 제출을 한곳에 모으려면 관리 담당자가 안내문에 따라 구글 앱스 스크립트 URL을 설정해야 합니다.";
+}
+
+/* =====================================================
+   공통
+   ===================================================== */
+let me = null;        // {code,name} 로그인한 지사
+let current = {};     // barcode -> qty
+let allCache = {};    // 관리자용
+
+function fmt(n){ return (n||0).toLocaleString("ko-KR"); }
+function fmtTime(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  const p = x => String(x).padStart(2,"0");
+  return `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}. ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function show(view){
+  ["gate","branch","admin"].forEach(v=>{
+    document.getElementById("view-"+v).classList.toggle("active", v===view);
+  });
+  window.scrollTo(0,0);
+}
+function logout(){
+  me = null; current = {};
+  document.getElementById("loginCode").value = "";
+  document.getElementById("adminPw").value = "";
+  hideGateErr();
+  show("gate");
+}
+
+/* =====================================================
+   게이트
+   ===================================================== */
+function gateTab(t){
+  document.getElementById("gt-branch").classList.toggle("on", t==="branch");
+  document.getElementById("gt-admin").classList.toggle("on", t==="admin");
+  document.getElementById("gate-branch").style.display = t==="branch" ? "" : "none";
+  document.getElementById("gate-admin").style.display = t==="admin" ? "" : "none";
+  hideGateErr();
+}
+function gateErr(msg){
+  const el = document.getElementById("gateErr");
+  el.innerHTML = msg; el.classList.add("show");
+}
+function hideGateErr(){ document.getElementById("gateErr").classList.remove("show"); }
+
+async function loginBranch(){
+  hideGateErr();
+  const raw = document.getElementById("loginCode").value.trim().toUpperCase();
+  if(!raw){ gateErr("거래처코드를 입력해 주세요."); return; }
+  const b = BRANCHES.find(x=>x.code.toUpperCase()===raw);
+  if(!b){ gateErr("등록되지 않은 거래처코드입니다. 코드를 다시 확인해 주세요."); return; }
+  me = b;
+  document.getElementById("meName").textContent = b.name;
+  document.getElementById("meCode").textContent = b.code;
+  const bn = document.getElementById("branchBanner");
+  const w = storageWarning();
+  bn.innerHTML = w; bn.classList.toggle("show", !!w);
+  show("branch");
+  await loadBranch();
+}
+function loginAdmin(){
+  hideGateErr();
+  const pw = document.getElementById("adminPw").value;
+  if(pw !== ADMIN_PW){ gateErr("비밀번호가 올바르지 않습니다."); return; }
+  document.getElementById("adminPw").value = "";
+  const bn = document.getElementById("adminBanner");
+  const w = storageWarning();
+  bn.innerHTML = w; bn.classList.toggle("show", !!w);
+  show("admin");
+  loadAdmin();
+}
+document.getElementById("loginCode").addEventListener("keydown", e=>{ if(e.key==="Enter") loginBranch(); });
+document.getElementById("adminPw").addEventListener("keydown", e=>{ if(e.key==="Enter") loginAdmin(); });
+
+/* =====================================================
+   지사 화면
+   ===================================================== */
+async function loadBranch(){
+  document.getElementById("branchStatus").innerHTML = '<span class="when">불러오는 중…</span>';
+  document.getElementById("entryArea").innerHTML = "";
+  let sub = null;
+  try { sub = await storeGet(me.code); } catch(e) {}
+  current = {};
+  TEXTBOOKS.forEach(t=>{ current[t.barcode] = sub && sub.qty ? (sub.qty[t.barcode]||0) : 0; });
+  renderBranchStatus(sub);
+  renderEntry();
+}
+function renderBranchStatus(sub){
+  const el = document.getElementById("branchStatus");
+  if(sub && sub.submitted){
+    el.innerHTML = `<span class="pill done">제출 완료</span><span class="when">최근 저장: ${fmtTime(sub.savedAt)} · 수정 후 다시 제출하면 갱신됩니다.</span>`;
+  } else {
+    el.innerHTML = `<span class="pill todo">미제출</span><span class="when">교재별 필요 수량을 입력한 뒤 제출해 주세요.</span>`;
+  }
+}
+function renderEntry(){
+  const rows = TEXTBOOKS.map(t=>`
+    <div class="book">
+      <div>
+        <div class="name">${t.name}</div>
+        <div class="bar">바코드 ${t.barcode}</div>
+      </div>
+      <div>
+        <div class="stepper">
+          <button type="button" onclick="bump('${t.barcode}',-1)" aria-label="감소">−</button>
+          <input type="number" inputmode="numeric" min="0" data-bc="${t.barcode}" value="${current[t.barcode]||0}" oninput="onQty(this)" />
+          <button type="button" onclick="bump('${t.barcode}',1)" aria-label="증가">+</button>
+        </div>
+      </div>
+    </div>`).join("");
+  document.getElementById("entryArea").innerHTML = `
+    ${rows}
+    <div class="totalbar">
+      <span class="lab">총 필요 수량</span>
+      <span class="val"><span id="grandTotal">0</span><small>부</small></span>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="submitBtn" onclick="submitBranch()">제출하기</button>
+    </div>`;
+  updateTotal();
+}
+function onQty(el){
+  let v = parseInt(el.value,10); if(isNaN(v)||v<0) v=0;
+  current[el.dataset.bc] = v; updateTotal();
+}
+function bump(bc,d){
+  const el = document.querySelector(`input[data-bc="${bc}"]`);
+  let v = (current[bc]||0)+d; if(v<0) v=0;
+  current[bc]=v; if(el) el.value=v; updateTotal();
+}
+function updateTotal(){
+  const t = TEXTBOOKS.reduce((s,b)=>s+(current[b.barcode]||0),0);
+  const g = document.getElementById("grandTotal"); if(g) g.textContent = fmt(t);
+}
+async function submitBranch(){
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true; btn.textContent = "저장 중…";
+  const sub = { code: me.code, name: me.name, qty: {...current}, submitted: true, savedAt: new Date().toISOString() };
+  try {
+    await storeSave(sub);
+    renderBranchStatus(sub);
+    toast("제출되었습니다. 감사합니다!");
+  } catch(e){
+    toast("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+  } finally {
+    btn.disabled = false; btn.textContent = "제출하기";
+  }
+}
+
+/* =====================================================
+   관리자 화면
+   ===================================================== */
+async function loadAdmin(){
+  document.getElementById("totalsGrid").innerHTML = '<div class="note" style="padding:6px 0;">집계를 불러오는 중…</div>';
+  document.getElementById("sumBody").innerHTML = "";
+  try { allCache = await storeAll(); } catch(e){ allCache = {}; toast("데이터를 불러오지 못했습니다."); }
+  renderTotals(); renderTable();
+}
+function renderTotals(){
+  const subs = Object.values(allCache);
+  const done = subs.filter(s=>s.submitted).length;
+  document.getElementById("subCount").textContent = done;
+  document.getElementById("totalCount").textContent = BRANCHES.length;
+  document.getElementById("subBar").style.width = (BRANCHES.length? (done/BRANCHES.length*100):0)+"%";
+  document.getElementById("totalsGrid").innerHTML = TEXTBOOKS.map(t=>{
+    const sum = subs.reduce((s,x)=>s+((x.qty&&x.qty[t.barcode])||0),0);
+    return `<div class="tcard"><div class="t-name">${t.name}</div><div class="t-val">${fmt(sum)}</div></div>`;
+  }).join("");
+}
+function shortName(n){
+  return n.replace(/\(21\)/g,"").replace(/그래머 인사이드/,"그인").replace(/얇고빠른10\+2회/,"얇빠").replace(/수능만만 /,"만만 ");
+}
+function renderTable(){
+  const q = (document.getElementById("sumSearch").value||"").trim().toLowerCase();
+  const filter = document.getElementById("sumFilter").value;
+  document.getElementById("sumHead").innerHTML =
+    `<tr><th class="l">지사</th><th class="l">코드</th>` +
+    TEXTBOOKS.map(t=>`<th>${shortName(t.name)}</th>`).join("") +
+    `<th>합계</th><th>제출</th><th class="l">최근 저장</th></tr>`;
+  const foot = TEXTBOOKS.map(t=>{
+    const s = Object.values(allCache).reduce((a,x)=>a+((x.qty&&x.qty[t.barcode])||0),0);
+    return `<td>${fmt(s)}</td>`;
+  }).join("");
+  const grand = Object.values(allCache).reduce((a,x)=>a+TEXTBOOKS.reduce((b,t)=>b+((x.qty&&x.qty[t.barcode])||0),0),0);
+  document.getElementById("sumFoot").innerHTML =
+    `<tr><td class="l">합계</td><td></td>${foot}<td>${fmt(grand)}</td><td></td><td></td></tr>`;
+
+  const rows = BRANCHES.filter(b=>{
+    if(q && !(b.name.toLowerCase().includes(q)||b.code.toLowerCase().includes(q))) return false;
+    const sub = allCache[b.code];
+    if(filter==="done") return sub && sub.submitted;
+    if(filter==="todo") return !(sub && sub.submitted);
+    return true;
+  }).map(b=>{
+    const sub = allCache[b.code];
+    const cells = TEXTBOOKS.map(t=>`<td>${sub&&sub.qty?fmt(sub.qty[t.barcode]||0):"–"}</td>`).join("");
+    const rowTot = sub&&sub.qty? TEXTBOOKS.reduce((a,t)=>a+(sub.qty[t.barcode]||0),0):0;
+    const badge = sub&&sub.submitted ? '<span class="s-badge done">완료</span>' : '<span class="s-badge todo">미제출</span>';
+    return `<tr class="${sub&&sub.submitted?'':'notsub'}">
+      <td class="l">${b.name}</td><td class="l">${b.code}</td>
+      ${cells}<td><b>${sub?fmt(rowTot):"–"}</b></td>
+      <td>${badge}</td><td class="l">${sub?fmtTime(sub.savedAt):""}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("sumBody").innerHTML = rows || `<tr><td class="l" colspan="${TEXTBOOKS.length+5}" style="padding:24px;color:var(--muted)">조건에 맞는 지사가 없습니다.</td></tr>`;
+}
+
+/* =====================================================
+   엑셀(.xlsx) 내려받기
+   ===================================================== */
+function exportXlsx(){
+  const header = ["거래처코드","거래처명",...TEXTBOOKS.map(t=>t.name),"합계","제출여부","최근 저장"];
+  const rows = [header];
+  const totals = TEXTBOOKS.map(()=>0); let gtot=0;
+  BRANCHES.forEach(b=>{
+    const s = allCache[b.code];
+    const q = TEXTBOOKS.map((t,i)=>{ const v=s&&s.qty?(s.qty[t.barcode]||0):0; totals[i]+=v; return v; });
+    const rt = q.reduce((a,v)=>a+v,0); gtot+=rt;
+    rows.push([b.code,b.name,...q,rt, s&&s.submitted?"제출":"미제출", s?fmtTime(s.savedAt):""]);
+  });
+  rows.push(["","합계",...totals,gtot,"",""]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [{wch:10},{wch:14},...TEXTBOOKS.map(()=>({wch:14})),{wch:8},{wch:8},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "수요집계");
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `지사_교재_수요_집계_${today}.xlsx`);
+  toast("엑셀 파일을 내려받았습니다.");
+}
+</script>
+</body>
+</html>
